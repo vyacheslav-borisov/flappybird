@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<atlas texture="atlas.png" coordType="pixels" >
+    <sprite name="background_day" >
+        <frame coords="0 0 288 511" ></frame>
+    </sprite>
+    <sprite name="background_night" >
+        <frame coords="291 0 580 511" ></frame>
+    </sprite>
+    <sprite name="ground" >
+        <frame coords="586 0 918 111" ></frame>
+    </sprite>
+    <sprite name="column_green_up" >
+        <frame coords="111 645 165 965" ></frame>
+    </sprite>
+    <sprite name="column_green_down" >
+        <frame coords="168 645 220 965" ></frame>
+    </sprite>
+    <sprite name="column_red_up" >
+        <frame coords="52 965 0 645" ></frame>
+    </sprite>
+    <sprite name="column_red_down" >
+        <frame coords="55 645 108 965" ></frame>
+    </sprite>
+    <sprite name="bird" >
+        <frame coords="353 534 394 564" ></frame>
+        <frame coords="428 534 469 564" ></frame>
+        <frame coords="502 534 549 564" ></frame>
+        <frame coords="428 534 469 564" ></frame>
+    </sprite>
+    <sprite name="get_ready" >
+        <frame coords="588 116 780 170" ></frame>
+    </sprite>
+    <sprite name="game_over" >
+        <frame coords="782 115 985 160" ></frame>
+    </sprite>
+    <sprite name="digit_big" >
+        <frame coords="990 118 1017 156" ></frame>
+        <frame coords="270 907 291 948" ></frame>
+        <frame coords="582 318 609 357" ></frame>
+        <frame coords="610 318 637 357" ></frame>
+        <frame coords="638 318 665 357" ></frame>
+        <frame coords="666 318 694 357" ></frame>
+        <frame coords="582 365 609 405" ></frame>
+        <frame coords="610 365 637 405" ></frame>
+        <frame coords="638 365 665 405" ></frame>
+        <frame coords="666 365 694 405" ></frame>
+    </sprite>    
+</atlas>
