@@ -108,13 +108,13 @@ namespace pegas
 	inline QuadTree<T, K, KeyGenPolicy>::QuadTree()
 		:m_rootNode(NULL)
 	{
-		LOGI("QuadTree constructor");
+		LOGD_LOOP("QuadTree constructor");
 	}
 
 	template<typename T, typename  K, typename KeyGenPolicy>
 	inline QuadTree<T, K, KeyGenPolicy>::~QuadTree()
 	{
-		LOGI("QuadTree destructor");
+		LOGD_LOOP("QuadTree destructor");
 
 		destroy();
 	}
@@ -122,7 +122,7 @@ namespace pegas
 	template<typename T, typename  K, typename KeyGenPolicy>
 	inline void QuadTree<T, K, KeyGenPolicy>::create(const Rect2D& worldArea)
 	{
-		LOGI("QuadTree::create [worldArea: x1  = %.2f, y1  = %.2f, x2  = %.2f, y2  = %.2f]",
+		LOGD_LOOP("QuadTree::create [worldArea: x1  = %.2f, y1  = %.2f, x2  = %.2f, y2  = %.2f]",
 				worldArea._topLeft._x, worldArea._topLeft._y,
 				worldArea._bottomRight._x, worldArea._bottomRight._y);
 
@@ -135,7 +135,7 @@ namespace pegas
 	template<typename T, typename  K, typename KeyGenPolicy>
 	inline void QuadTree<T, K, KeyGenPolicy>::destroy()
 	{
-		LOGI("QuadTree::destroy");
+		LOGD_LOOP("QuadTree::destroy");
 
 		if(m_rootNode)
 		{
@@ -147,8 +147,8 @@ namespace pegas
 	template<typename T, typename  K, typename KeyGenPolicy>
 	inline bool QuadTree<T, K, KeyGenPolicy>::insertObject(const T& object, const Rect2D& objectAABB)
 	{
-		LOGI("QuadTree::insertObject");
-		LOGI("[objectAABB: x1 = %0.2f, y1 = %0.2f, x2 = %0.2f, y2 = %0.2f]",
+		LOGD_LOOP("QuadTree::insertObject");
+		LOGD_LOOP("[objectAABB: x1 = %0.2f, y1 = %0.2f, x2 = %0.2f, y2 = %0.2f]",
 				objectAABB._topLeft._x, objectAABB._topLeft._y,
 				objectAABB._bottomRight._x, objectAABB._bottomRight._y);
 
@@ -228,7 +228,7 @@ namespace pegas
 	template<typename T>
 	inline QuadTreeNode<T>::QuadTreeNode()
 	{
-		LOGI("QuadTreeNode constructor [this: 0x%X]", this);
+		LOGD_LOOP("QuadTreeNode constructor [this: 0x%X]", this);
 
 		for(int i = 0; i < k_childTotal; i++)
 		{
@@ -239,7 +239,7 @@ namespace pegas
 	template<typename T>
 	inline QuadTreeNode<T>::~QuadTreeNode()
 	{
-		LOGI("QuadTreeNode destructor [this: 0x%X]", this);
+		LOGD_LOOP("QuadTreeNode destructor [this: 0x%X]", this);
 
 		for(int i = 0; i < k_childTotal; i++)
 		{
@@ -250,8 +250,8 @@ namespace pegas
 	template<typename T>
 	void QuadTreeNode<T>::setAABB(const Rect2D& AABB)
 	{
-		LOGI("QuadTreeNode<T>::setAABB [this: 0x%X]", this);
-		LOGI("[AABB: x1 = %0.2f, y1 = %0.2f, x2 = %0.2f, y2 = %0.2f]",
+		LOGD_LOOP("QuadTreeNode<T>::setAABB [this: 0x%X]", this);
+		LOGD_LOOP("[AABB: x1 = %0.2f, y1 = %0.2f, x2 = %0.2f, y2 = %0.2f]",
 				AABB._topLeft._x, AABB._topLeft._y,
 				AABB._bottomRight._x, AABB._bottomRight._y);
 
@@ -268,22 +268,22 @@ namespace pegas
 
 			Rect2D childAABB;
 
-			LOGI("setup AABB for NorthWest child node");
+			LOGD_LOOP("setup AABB for NorthWest child node");
 			childAABB._topLeft = AABB._topLeft;
 			childAABB._bottomRight = center;
 			m_childs[k_childNorthWest]->setAABB(childAABB);
 
-			LOGI("setup AABB for NorthEast child node");
+			LOGD_LOOP("setup AABB for NorthEast child node");
 			childAABB._topLeft = centerUpEdge;
 			childAABB._bottomRight = centerRightEdge;
 			m_childs[k_childNorthEast]->setAABB(childAABB);
 
-			LOGI("setup AABB for SouthEast child node");
+			LOGD_LOOP("setup AABB for SouthEast child node");
 			childAABB._topLeft = center;
 			childAABB._bottomRight = AABB._bottomRight;
 			m_childs[k_childSouthEast]->setAABB(childAABB);
 
-			LOGI("setup AABB for SouthWest child node");
+			LOGD_LOOP("setup AABB for SouthWest child node");
 			childAABB._topLeft = centerLeftEdge;
 			childAABB._bottomRight = centerBottomEdge;
 			m_childs[k_childSouthWest]->setAABB(childAABB);
@@ -293,8 +293,8 @@ namespace pegas
 	template<typename T>
 	inline QuadTreeNode<T>* QuadTreeNode<T>::insertObject(const T& object, const Rect2D& objectAABB)
 	{
-		LOGI("QuadTreeNode<T>::insertObject [this: 0x%X]", this);
-		LOGI("[objectAABB: x1 = %0.2f, y1 = %0.2f, x2 = %0.2f, y2 = %0.2f]",
+		LOGD_LOOP("QuadTreeNode<T>::insertObject [this: 0x%X]", this);
+		LOGD_LOOP("[objectAABB: x1 = %0.2f, y1 = %0.2f, x2 = %0.2f, y2 = %0.2f]",
 				objectAABB._topLeft._x, objectAABB._topLeft._y,
 				objectAABB._bottomRight._x, objectAABB._bottomRight._y);
 
@@ -307,7 +307,7 @@ namespace pegas
 
 		if(m_childs[0] == NULL)
 		{
-			LOGI("creating child nodes");
+			LOGD_LOOP("creating child nodes");
 
 			for(int i = 0; i < k_childTotal; i++)
 			{
@@ -316,7 +316,7 @@ namespace pegas
 			setAABB(m_AABB);
 		}
 
-		LOGI("try insert object into child nodes");
+		LOGD_LOOP("try insert object into child nodes");
 		for(int i = 0; i < k_childTotal; i++)
 		{
 			if(m_childs[i]->insertObject(object, objectAABB))
@@ -329,7 +329,7 @@ namespace pegas
 		ObjectListIt foundIt = std::find(m_objects.begin(), m_objects.end(), item);
 		if(foundIt == m_objects.end())
 		{
-			LOGI("inserting object to node 0x%X", this);
+			LOGD_LOOP("inserting object to node 0x%X", this);
 
 			m_objects.push_back(item);
 			return this;
@@ -341,7 +341,7 @@ namespace pegas
 	template<typename T>
 	inline bool QuadTreeNode<T>::removeObject(const T& object)
 	{
-		LOGI("QuadTreeNode::removeObject [this: 0x%X]", this);
+		LOGD_LOOP("QuadTreeNode::removeObject [this: 0x%X]", this);
 
 		QuadTreeItem item(object, Rect2D());
 		ObjectListIt foundIt = std::find(m_objects.begin(), m_objects.end(), item);
@@ -357,7 +357,7 @@ namespace pegas
 	template<typename T>
 	inline bool QuadTreeNode<T>::removeAllObjects()
 	{
-		LOGI("QuadTreeNode::removeAllObjects [this: 0x%X]", this);
+		LOGD_LOOP("QuadTreeNode::removeAllObjects [this: 0x%X]", this);
 
 		m_objects.clear();
 
@@ -373,7 +373,7 @@ namespace pegas
 	template<typename T>
 	inline void QuadTreeNode<T>::query(const Rect2D& queryAABB, std::list<T>& result)
 	{
-		//LOGI("QuadTreeNode::query [this: 0x%X]", this);
+		//LOGD_LOOP("QuadTreeNode::query [this: 0x%X]", this);
 
 		if(queryAABB.contains(m_AABB))
 		{

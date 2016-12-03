@@ -1,96 +1,227 @@
 #include "../common.h"
-#include "game_screen.h"
+#include "flappy_birds.h"
 
-#include "../app/event_system.h"
+#include "../app/common_events.h"
 
 namespace pegas
 {
-	//===============================================================================
-	class Background: public GameObject
+	struct Event_Create_NextColumn: public Event
 	{
 	public:
-		static const std::string k_name;
-	public:
-		virtual std::string getName() { return k_name; }
-
-		virtual void onCreateSceneNode(Atlas* atlas,
-									   SceneManager* sceneManager,
-									   const Vector3& spawnPoint)
+		Event_Create_NextColumn()
 		{
-			LOGI("obtaining background sprite...");
-			Sprite* background = atlas->getSprite("background_day");
-			background->setPivot(Sprite::k_pivotLeftTop);
-
-			Gfx* gfx = m_context->getGFX();
-			float canvasWidth = gfx->getCanvasWidth();
-			float canvasHeight = gfx->getCanvasHeight();
-
-			Matrix4x4 scale;
-			scale.identity();
-			scale.scale(canvasWidth, canvasHeight, 0.0f);
-
-			LOGI("creating background scene node...");
-			SpriteSceneNode* backgroundSceneNode = new SpriteSceneNode(background);
-			backgroundSceneNode->setTransfrom(scale);
-			backgroundSceneNode->setZIndex(-10.0f);
-
-			SceneNode* rootNode = sceneManager->getRootNode();
-			LOGI("put background node to scene...");
-			rootNode->attachChild(backgroundSceneNode);
+			LOGI("Event_Create_NextColumn");
 		}
-	};
 
+		virtual EventType getType() const { return k_type; }
+		static const EventType k_type;
+	};
+	const EventType Event_Create_NextColumn::k_type = "Event_Create_NextColumn";
+
+	//===============================================================================
+	const std::string GameWorld::k_name = "game_world";
+
+	float GameWorld::s_columnVelocity = 0.0f;
+	float GameWorld::s_spriteScale = 0.0f;
+	float GameWorld::s_bornLine = 0.0f;
+	float GameWorld::s_deadLine = 0.0f;
+	float GameWorld::s_columnWindowHeight = 0.0f;
+
+	float GameWorld::getSpriteScale()
+	{
+		return s_spriteScale;
+	}
+
+	float GameWorld::getColumnVelocity()
+	{
+		return s_columnVelocity;
+	}
+
+	float GameWorld::getBornLine()
+	{
+		return s_bornLine;
+	}
+
+	float GameWorld::getDeadLine()
+	{
+		return s_deadLine;
+	}
+
+	float GameWorld::getColumnWindowHeight()
+	{
+		return s_columnWindowHeight;
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////
+	GameWorld::GameWorld()
+		:m_gameStarted(false), m_columnsSpawned(0)
+	{
+
+	}
+
+	void GameWorld::onCreate(IPlatformContext* context)
+	{
+		GameObject::onCreate(context);
+
+		EventManager* eventManager = context->getEventManager();
+		eventManager->addEventListener(this, Event_Game_Start::k_type);
+		eventManager->addEventListener(this, Event_Create_NextColumn::k_type);
+
+		eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Background::k_name)));
+		eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Ground::k_name)));
+		eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Bird::k_name)));
+
+		/*Rect2D screenRect = GameScreen::getScreenRect();
+		Vector3 spawnPoint(screenRect.width() * 0.5f, screenRect.height() * 0.5f, 0.0f);
+		eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Column::k_name, spawnPoint)));*/
+	}
+
+	void GameWorld::onDestroy(IPlatformContext* context)
+	{
+		EventManager* eventManager = context->getEventManager();
+		eventManager->removeEventListener(this);
+
+		GameObject::onDestroy(context);
+	}
+
+	void GameWorld::onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint)
+	{
+		Rect2D screenRect = GameScreen::getScreenRect();
+		float screenWidth = screenRect.width();
+
+		Sprite* background = atlas->getSprite("background_day");
+		s_spriteScale = screenWidth / background->width();
+		s_columnVelocity = -(screenWidth * 0.5f);
+
+		Sprite* column = atlas->getSprite("column_green_up");
+		float columnWidth = column->width() * s_spriteScale;
+		m_offset = columnWidth * 4.0f;
+		s_bornLine = screenRect.width() + columnWidth;
+		s_deadLine = -columnWidth;
+		m_spawnPosition._x = s_bornLine;
+
+		Sprite* bird = atlas->getSprite("bird");
+		s_columnWindowHeight = bird->height() * s_spriteScale * 3.5;
+	}
+
+	void GameWorld::handleEvent(EventPtr evt)
+	{
+		if(evt->getType() == Event_Game_Start::k_type)
+		{
+			m_gameStarted = true;
+
+			for(int i = 0; i < 4; i++)
+			{
+				spawnNewColumn();
+			}
+		}
+
+		if(evt->getType() == Event_Create_NextColumn::k_type)
+		{
+			spawnNewColumn();
+		}
+	}
+
+	void GameWorld::update(MILLISECONDS deltaTime)
+	{
+		if(!m_gameStarted) return;
+
+		float dt = deltaTime / 1000.0f;
+		float offset = getColumnVelocity() * dt;
+		m_spawnPosition._x += offset;
+	}
+
+	void GameWorld::spawnNewColumn()
+	{
+		LOGW_TAG("Pegas_debug", "GameWorld::spawnNewColumn");
+
+		static int k_columnsInPeriod = 10;
+
+		Rect2D screenRect = GameScreen::getScreenRect();
+		float borderDown = Ground::getGroundLevel() - getColumnWindowHeight();
+		float borderUp = getColumnWindowHeight();
+
+		float t = (m_columnsSpawned % k_columnsInPeriod) / (1.0f * k_columnsInPeriod);
+		float phase = t * Math::PI * 2.0f;
+		float amplitude = borderDown - borderUp;
+		float noiseAmplitude = amplitude * 0.3f;
+		float baseVerticalOffset = borderUp + (amplitude * std::sin(phase));
+		float noise = Math::rand(-noiseAmplitude, noiseAmplitude);
+		baseVerticalOffset += noise;
+
+		if(baseVerticalOffset > borderDown)
+		{
+			baseVerticalOffset = borderDown;
+		}
+
+		if(baseVerticalOffset < borderUp)
+		{
+			baseVerticalOffset = borderUp;
+		}
+
+		m_spawnPosition._y = baseVerticalOffset;
+
+		EventManager* eventManager = m_context->getEventManager();
+		eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Column::k_name, m_spawnPosition)));
+
+		m_spawnPosition._x += m_offset;
+		m_columnsSpawned++;
+	}
+
+	//===============================================================================
 	const std::string Background::k_name = "background";
 
-	//===============================================================================
-	class Ground: public GameObject
+	void Background::onCreateSceneNode(Atlas* atlas,
+									   SceneManager* sceneManager,
+									   const Vector3& spawnPoint)
 	{
-	public:
-		static const std::string k_name;
-	public:
-		Ground(): m_isMoving(false), m_velosity(0.0f) {}
+		LOGI("obtaining background sprite...");
+		Sprite* background = atlas->getSprite("background_day");
+		background->setPivot(Sprite::k_pivotLeftTop);
 
-		virtual std::string getName() { return k_name; }
-		virtual void onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint);
-		virtual void update(MILLISECONDS deltaTime);
+		Rect2D screenRect = GameScreen::getScreenRect();
 
-	private:
-		SceneNode*  m_sceneNodes[2];
-		Rect2D 		m_screenRect;
-		bool		m_isMoving;
-		float       m_velosity;
-	};
+		Matrix4x4 scale;
+		scale.identity();
+		scale.scale(screenRect.width(), screenRect.height(), 0.0f);
 
+		LOGI("creating background scene node...");
+		SpriteSceneNode* backgroundSceneNode = new SpriteSceneNode(background);
+		backgroundSceneNode->setTransfrom(scale);
+		backgroundSceneNode->setZIndex(-10.0f);
+		SceneNode* rootNode = sceneManager->getRootNode();
+
+		LOGI("put background node to scene...");
+		rootNode->attachChild(backgroundSceneNode);
+	}
+
+	//===============================================================================
 	const std::string Ground::k_name = "ground";
+
+	float Ground::s_groundLevel = 0;
+	float Ground::getGroundLevel()
+	{
+		return s_groundLevel;
+	}
 
 	void Ground::onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint)
 	{
-		Gfx* gfx = m_context->getGFX();
-		float screenWidth = gfx->getCanvasWidth();
-		float screenHeight = gfx->getCanvasHeight();
-		m_screenRect = Rect2D(0.0f, 0.0f, screenWidth, screenHeight);
-
-		LOGI("obtaining background sprite...");
-		Sprite* background = atlas->getSprite("background_day");
-
 		LOGI("obtaining ground sprite...");
 		Sprite* ground = atlas->getSprite("ground");
 		ground->setPivot(Sprite::k_pivotCenter);
 
-		float spriteWidth = ground->width();
-		float spriteHeight = ground->height();
-
-		float spriteScale = screenWidth / background->width();
-		spriteWidth = spriteWidth * spriteScale;
-		spriteHeight = spriteHeight * spriteScale;
+		float spriteWidth = ground->width() * GameWorld::getSpriteScale();
+		float spriteHeight = ground->height() * GameWorld::getSpriteScale();
+		Rect2D screenRect = GameScreen::getScreenRect();
+		s_groundLevel = screenRect.height() - spriteHeight;
 
 		Matrix4x4 scale, translate, world;
+
 		scale.identity();
 		scale.scale(spriteWidth, spriteHeight, 1.0f);
 
 		translate.identity();
-		translate.translate((screenWidth * 0.5f),
-				(screenHeight - (spriteHeight * 0.5f)), 0.0f);
+		translate.translate((screenRect.width() * 0.5f), (screenRect.height() - (spriteHeight * 0.5f)), 0.0f);
 		world = scale * translate;
 
 		LOGI("creating ground scene node #1...");
@@ -111,11 +242,11 @@ namespace pegas
 		m_sceneNodes[1] = new SpriteSceneNode(ground);
 		m_sceneNodes[1]->setZIndex(-8.0f);
 		m_sceneNodes[1]->setTransfrom(world);
+
 		LOGI("put ground scene node #2 to scene...");
 		rootNode->attachChild(m_sceneNodes[1]);
 
 		m_isMoving = true;
-		m_velosity = screenWidth * 0.5f;
 	}
 
 	void Ground::update(MILLISECONDS deltaTime)
@@ -123,7 +254,7 @@ namespace pegas
 		if(!m_isMoving) return;
 
 		float dt = (deltaTime * 1.0f) / 1000.0f;
-		float offset = -(m_velosity * dt);
+		float offset = GameWorld::getColumnVelocity() * dt;
 
 		Matrix4x4 translate;
 		translate.identity();
@@ -138,8 +269,9 @@ namespace pegas
 		transform = transform * translate;
 		m_sceneNodes[1]->setTransfrom(transform);
 
+		Rect2D screenRect = GameScreen::getScreenRect();
 		Rect2D aabb = m_sceneNodes[0]->getBoundBox();
-		if(aabb._bottomRight._x <= m_screenRect._topLeft._x)
+		if(aabb._bottomRight._x <= screenRect._topLeft._x)
 		{
 			transform = transform * translate;
 			m_sceneNodes[0]->setTransfrom(transform);
@@ -150,67 +282,130 @@ namespace pegas
 		}
 	}
 
-	//======================================================================================
-	class Bird: public GameObject, public IMouseController
+	//===============================================================================
+	const std::string Column::k_name = "column";
+
+	Column::Column()
+		: m_isAboutToDestroy(false), m_isMoving(false)
 	{
-	public:
-		static const std::string k_name;
-	public:
-		Bird();
+		m_sceneNodes[k_up] = 0;
+		m_sceneNodes[k_down] = 0;
+	}
 
-		virtual std::string getName() { return k_name; }
+	void Column::onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint)
+	{
+		LOGW_TAG("Pegas_debug", "Column::onCreateSceneNode");
 
-		virtual void onCreate(IPlatformContext* context);
-		virtual void onDestroy(IPlatformContext* context);
-		virtual void onCreateSceneNode(Atlas* atlas,
-									   SceneManager* sceneManager,
-									   const Vector3& spawnPoint);
-		virtual void update(MILLISECONDS deltaTime);
+		m_currentPosition = spawnPoint;
 
-		virtual void onMouseButtonDown(MouseButton button, float x, float y, MouseFlags flags);
-		virtual void onMouseButtonUp(MouseButton button, float x, float y, MouseFlags flags) {}
-		virtual void onMouseMove(float x, float y, MouseFlags flags) {}
-		virtual void onMouseWheel(NumNothes wheel, MouseFlags flags) {}
-	private:
-		void impuls();
-		void  updateNodePosition(float offset, bool absolute = false);
-		void  setAngle(float angle);
-		float interpollateAngle(float velocity);
-		float checkUpBound(float offset);
-		float checkDownBound(float offset);
-		bool  isOnTheGround(float offset);
+		//загружаем из атласа спрайты колонн-преп€тсвий
+		LOGI("obtaining column sprites...");
+		//нижн€€ колонна
+		Sprite* spriteColumnUP = atlas->getSprite("column_green_up");
+		spriteColumnUP->setPivot(Sprite::k_pivotCenter);
+		//верхн€€ колонна
+		Sprite* spriteColumnDown = atlas->getSprite("column_green_down");
+		spriteColumnDown->setPivot(Sprite::k_pivotCenter);
 
-		enum
+		float spriteWidth = spriteColumnUP->width() * GameWorld::getSpriteScale();
+		float spriteHeight = spriteColumnUP->height() * GameWorld::getSpriteScale();
+		float windowHeight = GameWorld::getColumnWindowHeight();
+
+		Matrix4x4 scale, translate, world;
+		//матрица масштаба - задаем размеры колонн
+		scale.identity();
+		scale.scale(spriteWidth, spriteHeight, 1.0f);
+
+		//размещаем верхнюю колонну
+		translate.identity();
+		translate.translate(spawnPoint._x, (spawnPoint._y - (spriteHeight * 0.5f) - (windowHeight * 0.5f)), 0.0f);
+		world = scale * translate;
+
+		//создаем узел сцены дл€ колонны
+		LOGI("creating column scene node #1...");
+		m_sceneNodes[k_up] = new SpriteSceneNode(spriteColumnUP);
+		m_sceneNodes[k_up]->setZIndex(-9.0f);
+		m_sceneNodes[k_up]->setTransfrom(world);
+
+		translate.identity();
+		translate.translate(spawnPoint._x, (spawnPoint._y + (spriteHeight * 0.5f) + (windowHeight * 0.5f)), 0.0f);
+		world = scale * translate;
+
+		//размещаем нижнюю колонну
+		LOGI("creating column scene node #2...");
+		m_sceneNodes[k_down] = new SpriteSceneNode(spriteColumnDown);
+		m_sceneNodes[k_down]->setZIndex(-9.0f);
+		m_sceneNodes[k_down]->setTransfrom(world);
+
+		//помещаем узлы на сцену
+		SceneNode* rootNode = sceneManager->getRootNode();
+		LOGI("put ground scene node #1 to scene...");
+		rootNode->attachChild(m_sceneNodes[k_up]);
+
+
+		LOGI("put ground scene node #2 to scene...");
+		rootNode->attachChild(m_sceneNodes[k_down]);
+
+		m_isMoving = true;
+	}
+
+	void Column::update(MILLISECONDS deltaTime)
+	{
+		LOGW_TAG("Pegas_debug", "Column::update");
+
+		if(!m_isMoving) return;
+		if(m_isAboutToDestroy) return;
+
+		float dt = (deltaTime * 1.0f) / 1000.0f;
+		float offset = GameWorld::getColumnVelocity() * dt;
+
+		Matrix4x4 translate;
+		translate.identity();
+		translate.translate(offset, 0.0f, 0.0f);
+
+		Matrix4x4 matTransform = m_sceneNodes[k_down]->getLocalTransform();
+		matTransform = matTransform * translate;
+		m_sceneNodes[k_down]->setTransfrom(matTransform);
+
+		matTransform = m_sceneNodes[k_up]->getLocalTransform();
+		matTransform = matTransform * translate;
+		m_sceneNodes[k_up]->setTransfrom(matTransform);
+
+		m_currentPosition = m_currentPosition * translate;
+		if(m_currentPosition._x < GameWorld::getDeadLine())
 		{
-			k_modeIdle = 0,
-			k_modeFly,
-			k_modeFall,
-			k_modeShock,
-			k_modeDead
-		};
+			m_isAboutToDestroy = true;
 
-		Vector3 		m_position;
-		Matrix4x4		m_size;
+			EventManager* eventManager = m_context->getEventManager();
+			eventManager->pushEventToQueye(EventPtr(new Event_Create_NextColumn()));
+			eventManager->pushEventToQueye(EventPtr(new Event_Destroy_GameObject(m_handle)));
+		}
+	}
 
-		float 	    	m_radius;
-		float			m_groundLevel;
-		float 			m_impulsVelocity;
-		float			m_fallVelocity;
-		float			m_impulsAngle;
-		float			m_fallAngle;
-		float 			m_velocity;
-		float 			m_gravity;
+	void Column::onDestroy(IPlatformContext* context)
+	{
+		if(m_sceneNodes[k_down] && m_sceneNodes[k_up])
+		{
+			SceneNode* rootNode = m_sceneNodes[k_down]->getParentNode();
+			if(rootNode)
+			{
+				rootNode->removeChild(m_sceneNodes[k_up], true);
+				rootNode->removeChild(m_sceneNodes[k_down], true);
 
-		SceneNode* 		m_birdNode;
-		ProcessPtr		m_animation;
-		int 			m_mode;
-	};
+				m_sceneNodes[k_down] = 0;
+				m_sceneNodes[k_up] = 0;
+			}
+		}
 
+		GameObject::onDestroy(context);
+	}
+
+
+	//======================================================================================
 	const std::string Bird::k_name = "bird";
 
 	Bird::Bird()
 		:  m_radius(0.0f)
-		 , m_groundLevel(0.0f)
 		 , m_impulsVelocity(0.0f)
 		 , m_fallVelocity(0.0f)
 		 , m_impulsAngle(0.0f)
@@ -227,31 +422,22 @@ namespace pegas
 								 SceneManager* sceneManager,
 								 const Vector3& spawnPoint)
 	{
-		Gfx* gfx = m_context->getGFX();
-
-		float screenWidth = gfx->getCanvasWidth();
-		float screenHeight = gfx->getCanvasHeight();
-
-		Sprite* spriteBackground = atlas->getSprite("background_day");
-		Sprite* spriteGround = atlas->getSprite("ground");
-		Sprite* spriteBird = atlas->getSprite("bird");
-		spriteBird->setPivot(Sprite::k_pivotCenter);
-
-		float spriteScale = screenWidth / spriteBackground->width();
-		m_groundLevel = screenHeight - (spriteGround->height() * spriteScale);
-
-		m_gravity = m_groundLevel;
-		m_impulsVelocity = -(m_groundLevel / 2.0f);
+		m_gravity = Ground::getGroundLevel();
+		m_impulsVelocity = -(Ground::getGroundLevel() / 2.0f);
 		m_fallVelocity = -m_impulsVelocity;
 		m_impulsAngle	= Math::PI / 6;
 		m_fallAngle = -Math::PI / 2;
 		m_impulsAngle = 0.0f;
 
-		m_position._x = screenWidth * 0.3f;
-		m_position._y = m_groundLevel * 0.6f;
+		Rect2D screenRect = GameScreen::getScreenRect();
+		m_position._x = screenRect.width() * 0.3f;
+		m_position._y = Ground::getGroundLevel() * 0.6f;
 
-		float spriteWidth = spriteBird->width() * spriteScale;
-		float spriteHeight = spriteBird->height() * spriteScale;
+		Sprite* spriteBird = atlas->getSprite("bird");
+		spriteBird->setPivot(Sprite::k_pivotCenter);
+
+		float spriteWidth = spriteBird->width() * GameWorld::getSpriteScale();
+		float spriteHeight = spriteBird->height() * GameWorld::getSpriteScale();
 		m_radius = std::min(spriteWidth, spriteHeight) * 0.5f;
 		m_mode = k_modeIdle;
 
@@ -348,7 +534,7 @@ namespace pegas
 		float nextPosition = m_position._y + offset;
 		float facingPoint = nextPosition + m_radius;
 
-		if(facingPoint >= m_groundLevel)
+		if(facingPoint >= Ground::getGroundLevel())
 		{
 			return true;
 		}
@@ -375,9 +561,9 @@ namespace pegas
 		float rightOffset = offset;
 		float nextPosition = m_position._y + offset;
 		float facingPoint = nextPosition + m_radius;
-		if(facingPoint >= m_groundLevel)
+		if(facingPoint >= Ground::getGroundLevel())
 		{
-			nextPosition = m_groundLevel - m_radius;
+			nextPosition = Ground::getGroundLevel() - m_radius;
 			rightOffset = nextPosition - m_position._y;
 		}
 
@@ -432,6 +618,16 @@ namespace pegas
 
 	void Bird::onMouseButtonDown(MouseButton button, float x, float y, MouseFlags flags)
 	{
+		LOGW_TAG("Pegas_debug", "Bird::onMouseButtonDown");
+		//TODO: это временный код.
+		//старт игры должен производить слой экрана HUD, которого пока нет
+		//потом надо будет убрать
+		if(m_mode == k_modeIdle)
+		{
+			EventManager* eventManager = m_context->getEventManager();
+			eventManager->pushEventToQueye(EventPtr(new Event_Game_Start()));
+		}
+
 		impuls();
 	}
 
@@ -446,31 +642,8 @@ namespace pegas
 	{
 		context->removeMouseController(this);
 
-		GameObject::onCreate(context);
+		GameObject::onDestroy(context);
 	}
-
-
-
-	//===============================================================================
-	class GameWorld: public GameObject
-	{
-	public:
-		static const std::string k_name;
-	public:
-		virtual std::string getName() { return k_name; }
-
-		virtual void onCreate(IPlatformContext* context)
-		{
-			GameObject::onCreate(context);
-
-			EventManager* eventManager = context->getEventManager();
-			eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Background::k_name)));
-			eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Ground::k_name)));
-			eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Bird::k_name)));
-		}
-	};
-
-	const std::string GameWorld::k_name = "game_world";
 
 	//===============================================================================
 	class FlappyBirdsFactory: public GameObjectFactory
@@ -496,6 +669,11 @@ namespace pegas
 			if(name == Bird::k_name)
 			{
 				return new Bird();
+			}
+
+			if(name == Column::k_name)
+			{
+				return new Column();
 			}
 
 			return NULL;

@@ -17,4 +17,5 @@ namespace pegas
 
 	const EventType Event_Game_Pause::k_type = "Event_Game_Pause";
 	const EventType Event_Game_Resume::k_type = "Event_Game_Resume";
+	const EventType Event_Game_Start::k_type = "Event_Game_Start";
 }

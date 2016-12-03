@@ -171,6 +171,18 @@ namespace pegas
 		virtual EventType getType() const { return k_type; }
 		static const EventType k_type;		
 	};
+
+	struct Event_Game_Start: public Event
+	{
+	public:
+		Event_Game_Start()
+		{
+			LOGI("Event_Game_Start");
+		}
+
+		virtual EventType getType() const { return k_type; }
+		static const EventType k_type;
+	};
 }
 
 #endif

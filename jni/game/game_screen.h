@@ -65,6 +65,10 @@ namespace pegas
 
 		virtual void handleEvent(EventPtr evt);
 		virtual ListenerType getListenerName();
+
+	public:
+		static Rect2D getScreenRect();
+
 	private:
 		IPlatformContext*	m_context;
 		CollisionManager    m_physicsManager;
@@ -72,12 +76,14 @@ namespace pegas
 		SceneManager 		m_sceneManager;
 		SmartPointer<Atlas> m_atlas;
 
-		Rect2D				m_renderRect;
 		Matrix4x4 			m_viewMatrix;
 		Matrix4x4 			m_projectionMatrix;
 
 		bool				m_gamePaused;
 		float 				m_prevTime;
+
+	private:
+		static Rect2D				s_screenRect;
 	};
 
 	struct Event_Create_GameObject: public Event

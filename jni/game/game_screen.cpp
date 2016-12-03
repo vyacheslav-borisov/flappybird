@@ -13,6 +13,12 @@ namespace pegas
 	//=============================================================================
 	// GameScreen
 	//=============================================================================
+	Rect2D	GameScreen::s_screenRect;
+	Rect2D GameScreen::getScreenRect()
+	{
+		return s_screenRect;
+	}
+
 	GameScreen::GameScreen()
 		:BaseScreenLayer(_text("game"), 1, false), m_context(NULL), m_gamePaused(false), m_prevTime(-1)
 	{
@@ -52,8 +58,8 @@ namespace pegas
 		LOGI("setup process manager...");
 		m_processManager.init(context->getTimer());
 
-		m_renderRect._topLeft = Point2D(0.0f, 0.0f);
-		m_renderRect._bottomRight = Point2D(canvasWidth, canvasHeight);
+		s_screenRect._topLeft = Point2D(0.0f, 0.0f);
+		s_screenRect._bottomRight = Point2D(canvasWidth, canvasHeight);
 
 		EventManager* eventManager = context->getEventManager();
 		eventManager->addEventListener(this, Event_Create_GameObject::k_type);
@@ -68,13 +74,13 @@ namespace pegas
 	{
 		LOGI("GameScreen::destroy");
 
+		m_processManager.terminateAllProcesses();
+
 		LOGI("deleting scene manager");
 		m_sceneManager.destroy();
 
 		LOGI("unloading atlas");
 		m_atlas->unload();
-
-		m_processManager.terminateAllProcesses();
 
 		EventManager* eventManager = context->getEventManager();
 		eventManager->removeEventListener(this);
@@ -119,7 +125,7 @@ namespace pegas
 		gfx->setViewMatrix(m_viewMatrix);
 		gfx->setProjectionMatrix(m_projectionMatrix);
 
-		m_sceneManager.render(gfx, m_renderRect);
+		m_sceneManager.render(gfx, s_screenRect);
 	}
 
 	void GameScreen::onKeyDown(KeyCode key, KeyFlags flags)

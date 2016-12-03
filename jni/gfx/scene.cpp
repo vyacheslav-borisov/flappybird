@@ -12,32 +12,32 @@ namespace pegas
 	SceneManager::SceneManager()
 		:m_quadTree()
 	{
-		LOGI("SceneManager constructor");
+		LOGD_LOOP("SceneManager constructor");
 	}
 
 	SceneManager::~SceneManager()
 	{
-		LOGI("SceneManager destructor");
+		LOGD_LOOP("SceneManager destructor");
 
 		destroy();
 	}
 
 	void SceneManager::create(const Rect2D& worldArea)
 	{
-		LOGI("SceneManager::create [worldArea: x1 = %0.2f, y1 = %0.2f, x2 = %0.2f, y2 = %0.2f]",
+		LOGD_LOOP("SceneManager::create [worldArea: x1 = %0.2f, y1 = %0.2f, x2 = %0.2f, y2 = %0.2f]",
 				worldArea._topLeft._x, worldArea._topLeft._y,
 				worldArea._bottomRight._x, worldArea._bottomRight._y);
 
-		LOGI("setup listener");
+		LOGD_LOOP("setup listener");
 		m_rootNode.setListener(this);
 
-		LOGI("setup quad tree");
+		LOGD_LOOP("setup quad tree");
 		m_quadTree.create(worldArea);
 	}
 
 	void SceneManager::destroy()
 	{
-		LOGI("SceneManager::destroy");
+		LOGD_LOOP("SceneManager::destroy");
 
 		m_quadTree.destroy();
 		m_rootNode.removeAllChilds(true);
@@ -53,7 +53,7 @@ namespace pegas
 		std::list<SceneNode*> nodesToRender;
 		m_quadTree.query(rect, nodesToRender);
 
-		LOGI_LOOP("nodes to render = %d", nodesToRender.size());
+		LOGD_LOOP("nodes to render = %d", nodesToRender.size());
 
 		for(std::list<SceneNode*>::iterator it = nodesToRender.begin();
 				it != nodesToRender.end(); ++it)
@@ -74,42 +74,42 @@ namespace pegas
 
 	void SceneManager::onTransfromChanged(SceneNode* sender)
 	{
-		LOGI("SceneManager::onTransfromChanged [sender = 0x%X]");
+		LOGD_LOOP("SceneManager::onTransfromChanged [sender = 0x%X]");
 
 		Rect2D newAABB = sender->getBoundBox();
-		LOGI("AABB: x1: %.2f, y1: %.2f, x2: %.2f, y2: %.2f", newAABB._topLeft._x,
+		LOGD_LOOP("AABB: x1: %.2f, y1: %.2f, x2: %.2f, y2: %.2f", newAABB._topLeft._x,
 				newAABB._topLeft._y, newAABB._bottomRight._x, newAABB._bottomRight._y);
 
 		bool r1 = m_quadTree.removeObject(sender);
 		if(r1)
 		{
-			LOGI("previous QuadTreeNode removed");
+			LOGD_LOOP("previous QuadTreeNode removed");
 		}else
 		{
-			LOGI("previous QuadTreeNode not removed");
+			LOGD_LOOP("previous QuadTreeNode not removed");
 		}
 
 		bool r2 = m_quadTree.insertObject(sender, newAABB);
 		if(r2)
 		{
-			LOGI("new QuadTreeNode inserted");
+			LOGD_LOOP("new QuadTreeNode inserted");
 		}else
 		{
-			LOGI("new QuadTreeNode not inserted");
+			LOGD_LOOP("new QuadTreeNode not inserted");
 		}
 	}
 
 	void SceneManager::onNodeRemoved(SceneNode* sender)
 	{
-		LOGI("SceneManager::onNodeRemoved [sender = 0x%X]", sender);
+		LOGD_LOOP("SceneManager::onNodeRemoved [sender = 0x%X]", sender);
 
 		bool r = m_quadTree.removeObject(sender);
 		if(r)
 		{
-			LOGI("previous QuadTreeNode removed");
+			LOGD_LOOP("previous QuadTreeNode removed");
 		}else
 		{
-			LOGI("previous QuadTreeNode not removed");
+			LOGD_LOOP("previous QuadTreeNode not removed");
 		}
 	}
 
@@ -119,14 +119,14 @@ namespace pegas
 	SceneNode::SceneNode(SceneNode* parentNode)
 		:m_parentNode(parentNode), m_listener(NULL), m_zIndex(1.0f)
 	{
-		LOGI("SceneNode constructor [this: 0x%X]", this);
+		LOGD_LOOP("SceneNode constructor [this: 0x%X]", this);
 
 		m_transform.identity();
 	}
 
 	SceneNode::~SceneNode()
 	{
-		LOGI("SceneNode destructor [this: 0x%X]", this);
+		LOGD_LOOP("SceneNode destructor [this: 0x%X]", this);
 
 		removeAllChilds(true);
 	}
@@ -138,7 +138,7 @@ namespace pegas
 
 	void SceneNode::attachChild(SceneNode* childNode)
 	{
-		LOGI("SceneNode::attachChild [this: 0x%X, child = 0x%X]", this, childNode);
+		LOGD_LOOP("SceneNode::attachChild [this: 0x%X, child = 0x%X]", this, childNode);
 
 		SceneNode* prevParent = childNode->m_parentNode;
 		if(prevParent)
@@ -160,7 +160,7 @@ namespace pegas
 
 	void SceneNode::removeChild(SceneNode* childNode, bool deleteChild)
 	{
-		LOGI("SceneNode::removeChild [this: 0x%X, child = 0x%X, delete: %d]", this, childNode, deleteChild);
+		LOGD_LOOP("SceneNode::removeChild [this: 0x%X, child = 0x%X, delete: %d]", this, childNode, deleteChild);
 
 		ChildNodeListIt it = std::find(m_childsNodes.begin(),
 						m_childsNodes.end(), childNode);
@@ -182,7 +182,7 @@ namespace pegas
 
 	void SceneNode::removeAllChilds(bool deleteChild)
 	{
-		LOGI("SceneNode::removeAllChilds [this: 0x%X, delete: %d]", this, deleteChild);
+		LOGD_LOOP("SceneNode::removeAllChilds [this: 0x%X, delete: %d]", this, deleteChild);
 
 		for(ChildNodeListIt it = m_childsNodes.begin();
 						it != m_childsNodes.end(); ++it)
@@ -244,7 +244,7 @@ namespace pegas
 
 	void SceneNode::setListener(SceneNodeEventListener* listener)
 	{
-		LOGI("SceneNode::setListener [this: 0x%X, listener: 0x%X]", this, listener);
+		LOGD_LOOP("SceneNode::setListener [this: 0x%X, listener: 0x%X]", this, listener);
 
 		m_listener = listener;
 	}
