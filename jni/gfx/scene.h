@@ -20,8 +20,11 @@ namespace pegas
 	public:
 		virtual ~SceneNodeEventListener() {}
 
-		virtual void onTransfromChanged(SceneNode* sender) = 0;
-		virtual void onNodeRemoved(SceneNode* sender) = 0;
+		virtual void onChildAttach(SceneNode* sender, SceneNode* child) {}
+		virtual void onChildDettach(SceneNode* sender, SceneNode* child) {}
+		virtual void onChildRemove(SceneNode* sender, SceneNode* child) {}
+		virtual void onTransfromChanged(SceneNode* sender) {}
+		virtual void onNodeRemoved(SceneNode* sender) {}
 	};
 
 	template<typename T, typename K>
@@ -45,8 +48,7 @@ namespace pegas
 		void removeChild(SceneNode* childNode, bool deleteChild = false);
 		void removeAllChilds(bool deleteChild = false);
 
-		void setListener(SceneNodeEventListener* listener);
-		SceneNodeEventListener* getListener();
+		void addListener(SceneNodeEventListener* listener);
 
 		virtual void setTransfrom(const Matrix4x4& transform);
 		virtual Matrix4x4  getLocalTransform();
@@ -57,12 +59,25 @@ namespace pegas
 
 		virtual void render(Gfx* gfx);
 		virtual Rect2D getBoundBox();
+
 	private:
+		enum SceneNodeEventType
+		{
+			k_transfromChanged = 0,
+			k_nodeRemoved,
+			k_attachChild,
+			k_dettachChild,
+			k_removeChild
+		};
+		void notifyListeners(SceneNodeEventType e, SceneNode* child = NULL);
+
 		typedef std::list<SceneNode*> ChildNodeList;
 		typedef ChildNodeList::iterator ChildNodeListIt;
+		typedef std::list<SceneNodeEventListener*> Listeners;
+		typedef Listeners::iterator ListenersIt;
 
 		SceneNode* m_parentNode;
-		SceneNodeEventListener* m_listener;
+		Listeners  m_listeners;
 		ChildNodeList m_childsNodes;
 		Matrix4x4 m_transform;
 		float	  m_zIndex;
@@ -88,6 +103,7 @@ namespace pegas
 
 		virtual void onTransfromChanged(SceneNode* sender);
 		virtual void onNodeRemoved(SceneNode* sender);
+		virtual void onChildAttach(SceneNode* sender, SceneNode* child);
 	private:
 		typedef QuadTree<SceneNode*, SceneNode*,
 				SceneNodeKeyGenPolicy<SceneNode*, SceneNode*> > SMQuadTree;

@@ -19,7 +19,7 @@ namespace pegas
 
 		virtual std::string getName() = 0;
 
-		virtual void onCreate(IPlatformContext* context)
+		virtual void onCreate(IPlatformContext* context, void* pData)
 		{
 			m_context = context;
 		}
@@ -39,6 +39,8 @@ namespace pegas
 		}
 
 	protected:
+		void killMe();
+
 		IPlatformContext* m_context;
 	};
 
@@ -89,14 +91,14 @@ namespace pegas
 	struct Event_Create_GameObject: public Event
 	{
 	public:
-		Event_Create_GameObject(const std::string& name)
-					: _name(name)
+		Event_Create_GameObject(const std::string& name, void* pData = 0)
+					: _name(name), _pData(pData)
 		{
 			LOGI("Event_Create_GameObject");
 		}
 
-		Event_Create_GameObject(const std::string& name, const Vector3& spawnPoint)
-			: _name(name), _spawnPoint(spawnPoint)
+		Event_Create_GameObject(const std::string& name, const Vector3& spawnPoint, void* pData = 0)
+			: _name(name), _spawnPoint(spawnPoint), _pData(pData)
 		{
 			LOGI("Event_Create_GameObject");
 		}
@@ -106,6 +108,7 @@ namespace pegas
 
 		std::string _name;
 		Vector3		_spawnPoint;
+		void*		_pData;
 	};
 
 	struct Event_Destroy_GameObject: public Event

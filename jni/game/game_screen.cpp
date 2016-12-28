@@ -140,12 +140,14 @@ namespace pegas
 	{
 		if(evt->getType() == Event_Create_GameObject::k_type)
 		{
+			//LOGW_TAG("Pegas_debug", "processing Event_Create_GameObject");
+
 			Event_Create_GameObject* pEvent = evt->cast<Event_Create_GameObject>();
 			GameObject* actor = GameObjectFactory::getInstance().create(pEvent->_name);
 			if(actor)
 			{
 				m_processManager.attachProcess(ProcessPtr(actor));
-				actor->onCreate(m_context);
+				actor->onCreate(m_context, pEvent->_pData);
 				actor->onCreateSceneNode(m_atlas.get(), &m_sceneManager, pEvent->_spawnPoint);
 				actor->onCreateCollisionHull(&m_physicsManager);
 			}
@@ -171,6 +173,13 @@ namespace pegas
 	ListenerType GameScreen::getListenerName()
 	{
 		return "GameScreen";
+	}
+
+	//========================================================================================
+	void GameObject::killMe()
+	{
+		EventManager* eventManager = m_context->getEventManager();
+		eventManager->pushEventToQueye(EventPtr(new Event_Destroy_GameObject(m_handle)));
 	}
 }
 

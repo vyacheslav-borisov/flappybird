@@ -29,7 +29,7 @@ namespace pegas
 				worldArea._bottomRight._x, worldArea._bottomRight._y);
 
 		LOGD_LOOP("setup listener");
-		m_rootNode.setListener(this);
+		m_rootNode.addListener(this);
 
 		LOGD_LOOP("setup quad tree");
 		m_quadTree.create(worldArea);
@@ -113,11 +113,18 @@ namespace pegas
 		}
 	}
 
+	void SceneManager::onChildAttach(SceneNode* sender, SceneNode* child)
+	{
+		LOGD_LOOP("SceneManager::onChildAttach [sender = 0x%X, child = 0x%X]", sender, child);
+		child->addListener(this);
+		onTransfromChanged(child);
+	}
+
 	//-----------------------------------------------------------------------------
 	//	SceneNode class implementation
 	//-----------------------------------------------------------------------------
 	SceneNode::SceneNode(SceneNode* parentNode)
-		:m_parentNode(parentNode), m_listener(NULL), m_zIndex(1.0f)
+		:m_parentNode(parentNode), m_zIndex(1.0f)
 	{
 		LOGD_LOOP("SceneNode constructor [this: 0x%X]", this);
 
@@ -128,6 +135,7 @@ namespace pegas
 	{
 		LOGD_LOOP("SceneNode destructor [this: 0x%X]", this);
 
+		notifyListeners(k_nodeRemoved);
 		removeAllChilds(true);
 	}
 
@@ -151,10 +159,10 @@ namespace pegas
 
 		if(it == m_childsNodes.end())
 		{
-			childNode->m_listener = m_listener;
 			childNode->m_parentNode = this;
 			m_childsNodes.push_back(childNode);
-			m_listener->onTransfromChanged(childNode);
+
+			notifyListeners(k_attachChild, childNode);
 		}
 	}
 
@@ -167,10 +175,7 @@ namespace pegas
 
 		if(it != m_childsNodes.end())
 		{
-			if(m_listener)
-			{
-				m_listener->onNodeRemoved(*it);
-			}
+			notifyListeners(deleteChild ? k_removeChild : k_dettachChild, (*it));
 
 			if(deleteChild)
 			{
@@ -187,10 +192,7 @@ namespace pegas
 		for(ChildNodeListIt it = m_childsNodes.begin();
 						it != m_childsNodes.end(); ++it)
 		{
-			if(m_listener)
-			{
-				m_listener->onNodeRemoved(*it);
-			}
+			notifyListeners(deleteChild ? k_removeChild : k_dettachChild, (*it));
 
 			if(deleteChild)
 			{
@@ -204,10 +206,7 @@ namespace pegas
 	{
 		m_transform = transform;
 
-		if(m_listener)
-		{
-			m_listener->onTransfromChanged(this);
-		}
+		notifyListeners(k_transfromChanged);
 	}
 
 	Matrix4x4  SceneNode::getLocalTransform()
@@ -242,16 +241,40 @@ namespace pegas
 		}
 	}
 
-	void SceneNode::setListener(SceneNodeEventListener* listener)
+	void SceneNode::addListener(SceneNodeEventListener* listener)
 	{
 		LOGD_LOOP("SceneNode::setListener [this: 0x%X, listener: 0x%X]", this, listener);
 
-		m_listener = listener;
+		m_listeners.push_back(listener);
 	}
 
-	SceneNodeEventListener* SceneNode::getListener()
+	void SceneNode::notifyListeners(SceneNodeEventType e, SceneNode* child)
 	{
-		return m_listener;
+		for(ListenersIt it = m_listeners.begin(); it != m_listeners.end(); it++)
+		{
+			SceneNodeEventListener* listener = (*it);
+
+			switch(e)
+			{
+			case k_transfromChanged:
+				listener->onTransfromChanged(this);
+				break;
+			case k_nodeRemoved:
+				listener->onNodeRemoved(this);
+				break;
+			case k_attachChild:
+				listener->onChildAttach(this, child);
+				break;
+			case k_dettachChild:
+				listener->onChildDettach(this, child);
+				break;
+			case k_removeChild:
+				listener->onChildRemove(this, child);
+				break;
+			default:
+				break;
+			};
+		}
 	}
 }
 

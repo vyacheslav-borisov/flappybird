@@ -29,7 +29,7 @@ namespace pegas
 		virtual std::string getName() { return k_name; }
 		virtual ListenerType getListenerName() { return k_name; }
 
-		virtual void onCreate(IPlatformContext* context);
+		virtual void onCreate(IPlatformContext* context, void* pData);
 		virtual void onDestroy(IPlatformContext* context);
 		virtual void onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint);
 		virtual void handleEvent(EventPtr evt);
@@ -98,6 +98,7 @@ namespace pegas
 		{
 			k_up = 0,
 			k_down,
+			k_window,
 			k_max
 		};
 
@@ -116,11 +117,13 @@ namespace pegas
 
 		virtual std::string getName() { return k_name; }
 
-		virtual void onCreate(IPlatformContext* context);
+		virtual void onCreate(IPlatformContext* context, void* pData);
 		virtual void onDestroy(IPlatformContext* context);
 		virtual void onCreateSceneNode(Atlas* atlas,
 										   SceneManager* sceneManager,
 										   const Vector3& spawnPoint);
+		virtual void onCreateCollisionHull(CollisionManager* physicsManager);
+		virtual void onCollission(GameObject* other);
 		virtual void update(MILLISECONDS deltaTime);
 
 		virtual void onMouseButtonDown(MouseButton button, float x, float y, MouseFlags flags);
@@ -146,6 +149,8 @@ namespace pegas
 			k_modeDead
 		};
 
+		CollisionManager* m_physicsManager;
+
 		Vector3 		m_position;
 		Matrix4x4		m_size;
 
@@ -160,6 +165,43 @@ namespace pegas
 		SceneNode* 		m_birdNode;
 		ProcessPtr		m_animation;
 		int 			m_mode;
+	};
+
+
+	class CollidableObject : public GameObject, public SceneNodeEventListener
+	{
+	public:
+		CollidableObject();
+
+		virtual void onCreate(IPlatformContext* context, void* pData);
+		virtual void onCreateCollisionHull(CollisionManager* physicsManager);
+		virtual void onDestroy(IPlatformContext* context);
+
+		virtual void onTransfromChanged(SceneNode* sender);
+		virtual void onNodeRemoved(SceneNode* sender);
+
+	private:
+		CollisionManager* m_physicsManager;
+	};
+
+	class Trigger: public CollidableObject
+	{
+	public:
+		static const std::string k_name;
+
+	public:
+		Trigger() {}
+		virtual std::string getName() { return k_name; }
+	};
+
+	class Obstacle: public CollidableObject
+	{
+	public:
+		static const std::string k_name;
+
+	public:
+		Obstacle() {}
+		virtual std::string getName() { return k_name; }
 	};
 }
 

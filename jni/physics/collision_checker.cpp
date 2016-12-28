@@ -264,18 +264,46 @@ namespace pegas
 		PoligonCollisionHull* poligonCH = dynamic_cast<PoligonCollisionHull*>(polygon);
 
 		Vector3 position = circleCH->getPosition();
+		Vector3 dotPosition = position;
+		dotPosition._z = 1.0f;
+
 		float radius = circleCH->getRadius();
 		PointList points = poligonCH->getPoints();
 		
-		Vector3 dv;
-		float distance;
 		for(int i = 0; i < points.size(); i++)
 		{
-			dv = position - points[i];
-			distance = dv.length();
-			if(distance <= radius)
+			Vector3 vDistance = position - points[i];
+			float distance = vDistance.length();
+			if(distance < radius)
 			{
+				//LOGW_TAG("Pegas_debug", "distance < radius");
 				return true;
+			}
+
+			Vector3 p1 = points[i];
+			Vector3 p2 = (i == points.size() - 1) ? points[i + 1] : points[0];
+
+			Vector3 line;
+			line._x = p1._y - p2._y; //A
+			line._y = p2._x - p1._x; //B
+			line._z = (p1._x * p2._y) - (p2._x * p1._y); //C
+
+			float deviation = line.dotProduct(dotPosition);
+			if(std::abs(deviation) < radius)
+			{
+				//LOGW_TAG("Pegas_debug", "std::abs(deviation) < radius");
+
+				Vector3 v1 = position - p1;
+				Vector3 v2 = position - p2;
+				Vector3 l0 = p1 - p2;
+
+				float dot1 = l0.dotProduct(v1);
+				float dot2 = l0.dotProduct(v2);
+				if((dot1 * dot2) <= 0)
+				{
+					//LOGW_TAG("Pegas_debug", "(dot1 * dot2) <= 0");
+					return true;
+				}
 			}
 		}
 
