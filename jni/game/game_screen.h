@@ -3,7 +3,7 @@
 
 #include "../core/includes.h"
 #include "../gfx/includes.h"
-#include "../physics/collision_checker.h"
+#include "../physics/base_physics.h"
 #include "../app/interfaces.h"
 #include "../app/processes.h"
 #include "../app/default_game_state.h"
@@ -26,7 +26,7 @@ namespace pegas
 
 		virtual void onCreateSceneNode(Atlas* atlas,
 				SceneManager* sceneManager, const Vector3& spawnPoint) {}
-		virtual void onCreateCollisionHull(CollisionManager* physicsManager) {}
+		virtual void onCreateCollisionHull(IPhysics* physicsManager) {}
 		virtual void onCollission(GameObject* other) {}
 		virtual void onDestroy(IPlatformContext* context) {}
 		virtual void update(MILLISECONDS deltaTime) {}
@@ -73,7 +73,7 @@ namespace pegas
 
 	private:
 		IPlatformContext*	m_context;
-		CollisionManager    m_physicsManager;
+		BasePhysics2   		m_physicsManager;
 		ProcessManager		m_processManager;
 		SceneManager 		m_sceneManager;
 		SmartPointer<Atlas> m_atlas;

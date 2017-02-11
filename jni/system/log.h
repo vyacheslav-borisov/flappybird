@@ -15,17 +15,17 @@ namespace pegas
 
 #ifndef NDEBUG
 
-	/*#define LOGE(...) pegas::Log::error("Pegas", __VA_ARGS__)
-	#define LOGW(...) pegas::Log::warning("Pegas", __VA_ARGS__)
-	#define LOGI(...) pegas::Log::info("Pegas", __VA_ARGS__)
-	#define LOGD(...) pegas::Log::debug("Pegas", __VA_ARGS__)
+	#define LOGE(...) pegas::Log::error("Pegas_debug", __VA_ARGS__)
+	#define LOGW(...) pegas::Log::warning("Pegas_debug", __VA_ARGS__)
+	#define LOGI(...) pegas::Log::info("Pegas_debug", __VA_ARGS__)
+	#define LOGD(...) pegas::Log::debug("Pegas_debug", __VA_ARGS__)
 
 	#define LOGE_LOOP(...) pegas::Log::error("Pegas_loop", __VA_ARGS__)
 	#define LOGW_LOOP(...) pegas::Log::warning("Pegas_loop", __VA_ARGS__)
 	#define LOGI_LOOP(...) pegas::Log::info("Pegas_loop", __VA_ARGS__)
-	#define LOGD_LOOP(...) pegas::Log::debug("Pegas_loop", __VA_ARGS__)*/
+	#define LOGD_LOOP(...) pegas::Log::debug("Pegas_loop", __VA_ARGS__)
 
-	#define LOGE(...)
+	/*#define LOGE(...)
 	#define LOGW(...)
 	#define LOGI(...)
 	#define LOGD(...)
@@ -33,7 +33,7 @@ namespace pegas
 	#define LOGE_LOOP(...)
 	#define LOGW_LOOP(...)
 	#define LOGI_LOOP(...)
-	#define LOGD_LOOP(...)
+	#define LOGD_LOOP(...)*/
 
 	#define LOGE_TAG(...) pegas::Log::error(__VA_ARGS__)
 	#define LOGW_TAG(...) pegas::Log::warning(__VA_ARGS__)

@@ -32,6 +32,7 @@ namespace pegas
 		virtual void onCreate(IPlatformContext* context, void* pData);
 		virtual void onDestroy(IPlatformContext* context);
 		virtual void onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint);
+		virtual void onCreateCollisionHull(IPhysics* physicsManager);
 		virtual void handleEvent(EventPtr evt);
 		virtual void update(MILLISECONDS deltaTime);
 	private:
@@ -60,7 +61,7 @@ namespace pegas
 					SceneManager* sceneManager, const Vector3& spawnPoint);
 	};
 
-	class Ground: public GameObject
+	class Ground: public GameObject, public IEventListener
 	{
 	public:
 		static const std::string k_name;
@@ -73,6 +74,12 @@ namespace pegas
 		virtual void onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint);
 		virtual void update(MILLISECONDS deltaTime);
 
+		virtual void onCreate(IPlatformContext* context, void* pData);
+		virtual void onDestroy(IPlatformContext* context);
+
+		virtual ListenerType getListenerName() { return k_name; }
+		virtual void handleEvent(EventPtr evt);
+
 	private:
 		static float s_groundLevel;
 
@@ -80,7 +87,7 @@ namespace pegas
 		bool		m_isMoving;
 	};
 
-	class Column: public GameObject
+	class Column: public GameObject, public IEventListener
 	{
 	public:
 		static const std::string k_name;
@@ -91,7 +98,12 @@ namespace pegas
 		virtual std::string getName() { return k_name; }
 		virtual void onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint);
 		virtual void update(MILLISECONDS deltaTime);
+
+		virtual void onCreate(IPlatformContext* context, void* pData);
 		virtual void onDestroy(IPlatformContext* context);
+
+		virtual ListenerType getListenerName() { return k_name; }
+		virtual void handleEvent(EventPtr evt);
 
 	private:
 		enum
@@ -108,10 +120,12 @@ namespace pegas
 		bool 				m_isAboutToDestroy;
 	};
 
-	class Bird: public GameObject, public IMouseController
+	class Bird: public GameObject, public IMouseController, public IEventListener
 	{
 	public:
 		static const std::string k_name;
+		static const int32 k_collisionGroup;
+
 	public:
 		Bird();
 
@@ -122,9 +136,12 @@ namespace pegas
 		virtual void onCreateSceneNode(Atlas* atlas,
 										   SceneManager* sceneManager,
 										   const Vector3& spawnPoint);
-		virtual void onCreateCollisionHull(CollisionManager* physicsManager);
+		virtual void onCreateCollisionHull(IPhysics* physicsManager);
 		virtual void onCollission(GameObject* other);
 		virtual void update(MILLISECONDS deltaTime);
+
+		virtual ListenerType getListenerName() { return k_name; }
+		virtual void handleEvent(EventPtr evt);
 
 		virtual void onMouseButtonDown(MouseButton button, float x, float y, MouseFlags flags);
 		virtual void onMouseButtonUp(MouseButton button, float x, float y, MouseFlags flags) {}
@@ -149,7 +166,7 @@ namespace pegas
 			k_modeDead
 		};
 
-		CollisionManager* m_physicsManager;
+		IPhysics* m_physicsManager;
 
 		Vector3 		m_position;
 		Matrix4x4		m_size;
@@ -165,6 +182,7 @@ namespace pegas
 		SceneNode* 		m_birdNode;
 		ProcessPtr		m_animation;
 		int 			m_mode;
+		bool			m_isAboutToDestroy;
 	};
 
 
@@ -174,20 +192,21 @@ namespace pegas
 		CollidableObject();
 
 		virtual void onCreate(IPlatformContext* context, void* pData);
-		virtual void onCreateCollisionHull(CollisionManager* physicsManager);
+		virtual void onCreateCollisionHull(IPhysics* physicsManager);
 		virtual void onDestroy(IPlatformContext* context);
 
 		virtual void onTransfromChanged(SceneNode* sender);
 		virtual void onNodeRemoved(SceneNode* sender);
 
 	private:
-		CollisionManager* m_physicsManager;
+		IPhysics* m_physicsManager;
 	};
 
 	class Trigger: public CollidableObject
 	{
 	public:
 		static const std::string k_name;
+		static const int32 k_collisionGroup;
 
 	public:
 		Trigger() {}
@@ -198,6 +217,7 @@ namespace pegas
 	{
 	public:
 		static const std::string k_name;
+		static const int32 k_collisionGroup;
 
 	public:
 		Obstacle() {}

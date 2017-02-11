@@ -55,6 +55,9 @@ namespace pegas
 		LOGI("setup scene manager...");
 		m_sceneManager.create(worldArea);
 
+		LOGI("setup physics manager...");
+		m_physicsManager.create(worldArea);
+
 		LOGI("setup process manager...");
 		m_processManager.init(context->getTimer());
 
@@ -78,6 +81,9 @@ namespace pegas
 
 		LOGI("deleting scene manager");
 		m_sceneManager.destroy();
+
+		LOGI("deleting physics manager...");
+		m_physicsManager.destroy();
 
 		LOGI("unloading atlas");
 		m_atlas->unload();
@@ -108,8 +114,8 @@ namespace pegas
 			m_processManager.updateProcesses(deltaTime);
 
 			m_physicsManager.update();
-			CollisionManager::CollisionPairList& pairs = m_physicsManager.getCollidedPairs();
-			for(CollisionManager::CollisionPairListIt it = pairs.begin(); it != pairs.end(); ++it)
+			IPhysics::CollisionPairList& pairs = m_physicsManager.getCollidedPairs();
+			for(IPhysics::CollisionPairListIt it = pairs.begin(); it != pairs.end(); ++it)
 			{
 				GameObject* a = (GameObject*)it->first;
 				GameObject* b = (GameObject*)it->second;

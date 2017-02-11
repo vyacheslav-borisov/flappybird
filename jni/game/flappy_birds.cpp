@@ -2,6 +2,7 @@
 #include "flappy_birds.h"
 
 #include "../app/common_events.h"
+#include "../app/waiting.h"
 
 namespace pegas
 {
@@ -17,6 +18,11 @@ namespace pegas
 		static const EventType k_type;
 	};
 	const EventType Event_Create_NextColumn::k_type = "Event_Create_NextColumn";
+
+	//==============================================================================
+	const int32 Bird::k_collisionGroup = 1;
+	const int32 Obstacle::k_collisionGroup = 2;
+	const int32 Trigger::k_collisionGroup = 3;
 
 	//===============================================================================
 	const std::string GameWorld::k_name = "game_world";
@@ -56,7 +62,6 @@ namespace pegas
 	GameWorld::GameWorld()
 		:m_gameStarted(false), m_columnsSpawned(0)
 	{
-
 	}
 
 	void GameWorld::onCreate(IPlatformContext* context, void* pData)
@@ -65,6 +70,8 @@ namespace pegas
 
 		EventManager* eventManager = context->getEventManager();
 		eventManager->addEventListener(this, Event_Game_Start::k_type);
+		eventManager->addEventListener(this, Event_Game_Restart::k_type);
+		eventManager->addEventListener(this, Event_Game_Stop::k_type);
 		eventManager->addEventListener(this, Event_Create_NextColumn::k_type);
 
 		eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Background::k_name)));
@@ -104,11 +111,27 @@ namespace pegas
 		s_columnWindowHeight = bird->height() * s_spriteScale * 3.5;
 	}
 
+	void GameWorld::onCreateCollisionHull(IPhysics* physicsManager)
+	{
+		physicsManager->setCollisionGroupFlag(Bird::k_collisionGroup, true);
+		physicsManager->setCollisionGroupFlag(Obstacle::k_collisionGroup, false);
+		physicsManager->setCollisionGroupFlag(Trigger::k_collisionGroup, false);
+
+		physicsManager->setCollisionPairGroupFlag(Bird::k_collisionGroup, Obstacle::k_collisionGroup, true);
+		physicsManager->setCollisionPairGroupFlag(Bird::k_collisionGroup, Trigger::k_collisionGroup, true);
+		physicsManager->setCollisionPairGroupFlag(Trigger::k_collisionGroup, Obstacle::k_collisionGroup, false);
+	}
+
 	void GameWorld::handleEvent(EventPtr evt)
 	{
+		LOGI("GameWorld::handleEvent");
+
 		if(evt->getType() == Event_Game_Start::k_type)
 		{
+			LOGI("evt->getType() == Event_Game_Start::k_type");
+
 			m_gameStarted = true;
+			m_spawnPosition._x = s_bornLine;
 
 			for(int i = 0; i < 4; i++)
 			{
@@ -116,8 +139,25 @@ namespace pegas
 			}
 		}
 
+		if(evt->getType() == Event_Game_Restart::k_type)
+		{
+			LOGI("evt->getType() == Event_Game_Restart::k_type");
+
+			//EventManager* eventManager = m_context->getEventManager();
+			//eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Bird::k_name)));
+		}
+
+		if(evt->getType() == Event_Game_Stop::k_type)
+		{
+			LOGI("evt->getType() == Event_Game_Stop::k_type");
+
+			m_gameStarted = false;
+		}
+
 		if(evt->getType() == Event_Create_NextColumn::k_type)
 		{
+			LOGI("evt->getType() == Event_Create_NextColumn::k_type");
+
 			spawnNewColumn();
 		}
 	}
@@ -204,6 +244,36 @@ namespace pegas
 		return s_groundLevel;
 	}
 
+	void Ground::onCreate(IPlatformContext* context, void* pData)
+	{
+		GameObject::onCreate(context, pData);
+
+		EventManager* eventManager = context->getEventManager();
+		eventManager->addEventListener(this, Event_Game_Stop::k_type);
+		eventManager->addEventListener(this, Event_Game_Restart::k_type);
+	}
+
+	void Ground::onDestroy(IPlatformContext* context)
+	{
+		EventManager* eventManager = context->getEventManager();
+		eventManager->removeEventListener(this);
+
+		GameObject::onDestroy(context);
+	}
+
+	void Ground::handleEvent(EventPtr evt)
+	{
+		if(evt->getType() == Event_Game_Stop::k_type)
+		{
+			m_isMoving = false;
+		}
+
+		if(evt->getType() == Event_Game_Restart::k_type)
+		{
+			m_isMoving = true;
+		}
+	}
+
 	void Ground::onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint)
 	{
 		LOGI("obtaining ground sprite...");
@@ -288,15 +358,13 @@ namespace pegas
 	Column::Column()
 		: m_isAboutToDestroy(false), m_isMoving(false)
 	{
-		//LOGW_TAG("Pegas_debug", "Column constructor");
-
 		m_sceneNodes[k_up] = 0;
 		m_sceneNodes[k_down] = 0;
 	}
 
 	void Column::onCreateSceneNode(Atlas* atlas, SceneManager* sceneManager, const Vector3& spawnPoint)
 	{
-		//LOGW_TAG("Pegas_debug", "Column::onCreateSceneNode");
+		LOGI("Column::onCreateSceneNode this = %x", this);
 
 		m_currentPosition = spawnPoint;
 
@@ -372,6 +440,8 @@ namespace pegas
 		eventManager->pushEventToQueye(EventPtr(new Event_Create_GameObject(Trigger::k_name, (void*)m_sceneNodes[k_window])));
 
 		m_isMoving = true;
+
+		LOGI("Column::onCreateSceneNode end");
 	}
 
 	void Column::update(MILLISECONDS deltaTime)
@@ -407,8 +477,29 @@ namespace pegas
 		}
 	}
 
+	void Column::onCreate(IPlatformContext* context, void* pData)
+	{
+		LOGI("Column::onCreate this = %x", this);
+
+		GameObject::onCreate(context, pData);
+
+		LOGI("add event listener");
+		EventManager* eventManager = context->getEventManager();
+		eventManager->addEventListener(this, Event_Game_Stop::k_type);
+		eventManager->addEventListener(this, Event_Game_Restart::k_type);
+
+		LOGI("Column::onCreate end");
+	}
+
 	void Column::onDestroy(IPlatformContext* context)
 	{
+		LOGI("Column::onDestroy this = %x", this);
+
+		LOGI("remove event listener");
+		EventManager* eventManager = context->getEventManager();
+		eventManager->removeEventListener(this);
+
+		LOGI("remove column scene nodes");
 		if(m_sceneNodes[k_down] && m_sceneNodes[k_up])
 		{
 			SceneNode* rootNode = m_sceneNodes[k_down]->getParentNode();
@@ -423,8 +514,23 @@ namespace pegas
 		}
 
 		GameObject::onDestroy(context);
+
+		LOGI("Column::onDestroy end");
 	}
 
+	void Column::handleEvent(EventPtr evt)
+	{
+		if(evt->getType() == Event_Game_Stop::k_type)
+		{
+			m_isMoving = false;
+		}
+
+		if(evt->getType() == Event_Game_Restart::k_type)
+		{
+			m_isAboutToDestroy = true;
+			killMe();
+		}
+	}
 
 	//======================================================================================
 	const std::string Bird::k_name = "bird";
@@ -440,6 +546,7 @@ namespace pegas
 		 , m_birdNode(NULL)
 		 , m_mode(0)
 		 , m_physicsManager(NULL)
+		 , m_isAboutToDestroy(false)
 	{
 
 	}
@@ -448,17 +555,19 @@ namespace pegas
 								 SceneManager* sceneManager,
 								 const Vector3& spawnPoint)
 	{
+		LOGI("Bird::onCreateSceneNode this = %x", this);
+
 		m_gravity = Ground::getGroundLevel();
 		m_impulsVelocity = -(Ground::getGroundLevel() / 2.0f);
 		m_fallVelocity = -m_impulsVelocity;
-		m_impulsAngle	= Math::PI / 6;
-		m_fallAngle = -Math::PI / 2;
-		m_impulsAngle = 0.0f;
+		m_impulsAngle	= Math::PI / 12.0;
+		m_fallAngle = -Math::PI / 3.0;
 
 		Rect2D screenRect = GameScreen::getScreenRect();
 		m_position._x = screenRect.width() * 0.3f;
 		m_position._y = Ground::getGroundLevel() * 0.6f;
 
+		LOGI("creating sprite...");
 		Sprite* spriteBird = atlas->getSprite("bird");
 		spriteBird->setPivot(Sprite::k_pivotCenter);
 
@@ -477,13 +586,16 @@ namespace pegas
 
 		matTransform = m_size * matPosition;
 
+		LOGI("creating scene node...");
 		m_birdNode = new SpriteSceneNode(spriteBird);
-		m_birdNode->setZIndex(-9.0f);
+		m_birdNode->setZIndex(-7.0f);
 		m_birdNode->setTransfrom(matTransform);
 
+		LOGI("attach bird scene node to scene...");
 		SceneNode* rootNode = sceneManager->getRootNode();
 		rootNode->attachChild(m_birdNode);
 
+		LOGI("creating sprite animation...");
 		SpriteAnimation* animation = new SpriteAnimation(spriteBird);
 		animation->setNumFrames(0, 4);
 		animation->setFPS(8);
@@ -491,12 +603,17 @@ namespace pegas
 		m_animation = ProcessPtr(animation);
 		ProcessManager* processManager = m_context->getProcessManager();
 		processManager->attachProcess(m_animation);
+
+		LOGI("Bird::onCreateSceneNode end");
 	}
 
-	void Bird::onCreateCollisionHull(CollisionManager* physicsManager)
+	void Bird::onCreateCollisionHull(IPhysics* physicsManager)
 	{
+		LOGI("Bird::onCreateCollisionHull this = %x", this);
+
+		LOGI("register collidable circle");
 		m_physicsManager = physicsManager;
-		m_physicsManager->registerCircle((int32)this, 2, Vector3(), m_radius);
+		m_physicsManager->registerCircle((int32)this, k_collisionGroup, Vector3(), m_radius);
 	}
 
 	void Bird::onCollission(GameObject* other)
@@ -508,17 +625,27 @@ namespace pegas
 
 		if(other->getName() == Obstacle::k_name)
 		{
-			LOGW_TAG("Pegas_debug", "OBSTACLE!");
+			m_mode = k_modeShock;
+			m_animation->suspend();
+			if(m_velocity < m_fallVelocity)
+			{
+				m_velocity = m_fallVelocity;
+			}
+
+			EventManager* eventManager = m_context->getEventManager();
+			eventManager->pushEventToQueye(EventPtr(new Event_Game_Stop()));
 		}
 
 		if(other->getName() == Trigger::k_name)
 		{
-			LOGW_TAG("Pegas_debug", "TRIGGER!");
+
 		}
 	}
 
 	void Bird::update(MILLISECONDS deltaTime)
 	{
+		if(m_isAboutToDestroy) return;
+
 		static float elapsed = 0.0f;
 		float dt = (deltaTime * 1.0f) / 1000.0f;
 		elapsed += dt;
@@ -537,7 +664,7 @@ namespace pegas
 
 			if(m_velocity >= m_fallVelocity)
 			{
-				m_mode = k_modeFall;
+				m_mode = (m_mode == k_modeShock) ? k_modeShock : k_modeFall;
 				m_animation->suspend();
 
 				setAngle(m_fallAngle);
@@ -553,6 +680,17 @@ namespace pegas
 			if(isOnTheGround(offset))
 			{
 				m_mode = k_modeDead;
+
+				//TODO: временный код
+				//перезапуск игры должен осуществляться через меню
+				EventPtr finalEvent(new Event_Game_Restart());
+
+				Waiting* waiting = new Waiting(1.0f);
+				waiting->addFinalEvent(finalEvent);
+
+				ProcessPtr process(waiting);
+				ProcessManager* processManager = m_context->getProcessManager();
+				processManager->attachProcess(process);
 			}
 
 			offset = checkUpBound(offset);
@@ -683,17 +821,53 @@ namespace pegas
 
 	void Bird::onCreate(IPlatformContext* context, void* pData)
 	{
+		LOGI("Bird::onCreate this = %x", (int)this);
+
 		GameObject::onCreate(context, pData);
 
+		LOGI("add mouse controller");
 		context->addMouseController(this);
+
+		LOGI("add event listener");
+		EventManager* eventManager = context->getEventManager();
+		eventManager->addEventListener(this, Event_Game_Restart::k_type);
+
+		LOGI("Bird::onCreate end");
 	}
 
 	void Bird::onDestroy(IPlatformContext* context)
 	{
-		context->removeMouseController(this);
+		LOGI("Bird::onDestroy this = %x", (int)this);
+
+		LOGI("removing animation...");
+		m_animation->terminate();
+
+		LOGI("removing scene node...");
+		SceneNode* root = m_birdNode->getParentNode();
+		root->removeChild(m_birdNode, true);
+
+		LOGI("unregister collision hull...");
 		m_physicsManager->unregisterCollisionHull((int32)this);
 
+		LOGI("remove event listener...");
+		EventManager* eventManager = context->getEventManager();
+		eventManager->removeEventListener(this);
+
+		LOGI("remove mouse controller...");
+		context->removeMouseController(this);
+
 		GameObject::onDestroy(context);
+
+		LOGI("Bird::onDestroy end");
+	}
+
+	void Bird::handleEvent(EventPtr evt)
+	{
+		if(evt->getType() == Event_Game_Restart::k_type)
+		{
+			m_isAboutToDestroy = true;
+			killMe();
+		}
 	}
 
 	//===============================================================================
@@ -714,19 +888,20 @@ namespace pegas
 		sceneNode->addListener(this);
 	}
 
-	void CollidableObject::onCreateCollisionHull(CollisionManager* physicsManager)
+	void CollidableObject::onCreateCollisionHull(IPhysics* physicsManager)
 	{
 		GameObject::onCreateCollisionHull(physicsManager);
 
 		m_physicsManager = physicsManager;
 
-		CollisionManager::PointList points;
+		IPhysics::PointList points;
 		points.push_back(Vector3(-0.5f, -0.5f, 0.0f));
 		points.push_back(Vector3(0.5f, -0.5f, 0.0f));
 		points.push_back(Vector3(0.5f, 0.5f, 0.0f));
 		points.push_back(Vector3(-0.5f, 0.5f, 0.0f));
 
-		m_physicsManager->registerPoligon((int32)this, 1, points);
+		int32 group = (getName() == Obstacle::k_name) ? Obstacle::k_collisionGroup : Trigger::k_collisionGroup;
+		m_physicsManager->registerPoligon((int32)this, group, points);
 	}
 
 	void CollidableObject::onDestroy(IPlatformContext* context)

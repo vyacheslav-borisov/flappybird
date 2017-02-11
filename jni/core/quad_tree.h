@@ -6,21 +6,30 @@
 
 namespace pegas
 {
-	/*template<typename T, typename K>
-	class DefaultObjectKeyGenPolicy
+	template<typename T, typename K>
+	class QTKeyGenPolicy
 	{
 	public:
 		K getKeyFromObject(const T& object)
 		{
 			return const_cast<K>(object);
 		}
-	};*/
+	};
 
 	template<typename T>
 	class QuadTreeNode
 	{
 	public:
-		QuadTreeNode();
+		class IIterator
+		{
+		public:
+			virtual T current()= 0;
+			virtual void next() = 0;
+			virtual bool end() = 0;
+		};
+
+	public:
+		QuadTreeNode(QuadTreeNode* parentNode = NULL);
 		virtual ~QuadTreeNode();
 
 		QuadTreeNode<T>* insertObject(const T& object, const Rect2D& objectAABB);
@@ -31,6 +40,8 @@ namespace pegas
 		void query(std::list<T>& result);
 		void setAABB(const Rect2D& AABB);
 
+		QuadTreeNode<T>* getParentNode();
+		IIterator* getIterator();
 	private:
 		template <typename E>
 		struct TQuadTreeItem
@@ -54,6 +65,23 @@ namespace pegas
 		typedef std::list<QuadTreeItem> ObjectList;
 		typedef typename ObjectList::iterator ObjectListIt;
 
+		class Iterator: public IIterator
+		{
+		public:
+			Iterator(): m_objects(NULL) {}
+
+			void create(ObjectList* objects) { m_objects = objects; }
+			void rewind() { m_currentIterator = m_objects->begin(); }
+
+			virtual T current() { return (*m_currentIterator)._object; }
+			virtual void next() { m_currentIterator++; }
+			virtual bool end() { return m_currentIterator == m_objects->end(); }
+
+		private:
+			ObjectList* m_objects;
+			ObjectListIt m_currentIterator;
+		};
+
 		enum
 		{
 			k_childNorthWest,
@@ -64,15 +92,17 @@ namespace pegas
 		};
 
 		QuadTreeNode* m_childs[k_childTotal];
+		QuadTreeNode* m_parentNode;
 		Rect2D m_AABB;
 		ObjectList m_objects;
+		Iterator   m_objectIterator;
 
 	private:
 		QuadTreeNode(const QuadTreeNode& other);
 		QuadTreeNode& operator=(const QuadTreeNode& other);
 	};
 
-	template<typename T, typename  K, typename KeyGenPolicy>
+	template<typename T, typename  K, typename KeyGenPolicy = QTKeyGenPolicy<T, K> >
 	class QuadTree: public KeyGenPolicy
 	{
 		using KeyGenPolicy::getKeyFromObject;
@@ -90,6 +120,7 @@ namespace pegas
 		void query(const Rect2D& objectAABB, std::list<T>& result);
 		void query(const Point2D& queryPoint, std::list<T>& result);
 
+		QuadTreeNode<T>* getNodeByObject(const T& object);
 	private:
 		typedef std::map<K, QuadTreeNode<T>*> ObjectNodeLookupTable;
 		typedef typename ObjectNodeLookupTable::iterator ObjectNodeLookupTableIt;
@@ -220,13 +251,26 @@ namespace pegas
 		}
 	}
 
+	template<typename T, typename  K, typename KeyGenPolicy>
+	inline QuadTreeNode<T>* QuadTree<T, K, KeyGenPolicy>::getNodeByObject(const T& object)
+	{
+		K key = getKeyFromObject(object);
+		if(m_lookupTable.count(key) > 0)
+		{
+			return m_lookupTable[key];
+		}
+
+		return NULL;
+	}
+
 
 	//----------------------------------------------------------------------------
 	//  QuadTreeNode class implementation
 	//----------------------------------------------------------------------------
 
 	template<typename T>
-	inline QuadTreeNode<T>::QuadTreeNode()
+	inline QuadTreeNode<T>::QuadTreeNode(QuadTreeNode* parentNode)
+		:m_parentNode(parentNode)
 	{
 		LOGD_LOOP("QuadTreeNode constructor [this: 0x%X]", this);
 
@@ -234,6 +278,8 @@ namespace pegas
 		{
 			m_childs[i] = NULL;
 		}
+
+		m_objectIterator.create(&m_objects);
 	}
 
 	template<typename T>
@@ -245,6 +291,20 @@ namespace pegas
 		{
 			if(m_childs[i]) delete m_childs[i];
 		}
+	}
+
+	template<typename T>
+	inline QuadTreeNode<T>* QuadTreeNode<T>::getParentNode()
+	{
+		return m_parentNode;
+	}
+
+	template<typename T>
+	inline typename QuadTreeNode<T>::IIterator* QuadTreeNode<T>::getIterator()
+	{
+		m_objectIterator.rewind();
+
+		return &m_objectIterator;
 	}
 
 	template<typename T>
@@ -311,7 +371,7 @@ namespace pegas
 
 			for(int i = 0; i < k_childTotal; i++)
 			{
-				m_childs[i] = new QuadTreeNode<T>();
+				m_childs[i] = new QuadTreeNode<T>(this);
 			}
 			setAABB(m_AABB);
 		}

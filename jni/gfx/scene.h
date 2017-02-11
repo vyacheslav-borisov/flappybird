@@ -27,16 +27,6 @@ namespace pegas
 		virtual void onNodeRemoved(SceneNode* sender) {}
 	};
 
-	template<typename T, typename K>
-	class SceneNodeKeyGenPolicy
-	{
-	public:
-		K getKeyFromObject(const T& object)
-		{
-			return const_cast<K>(object);
-		}
-	};
-
 	class SceneNode
 	{
 	public:
@@ -105,8 +95,7 @@ namespace pegas
 		virtual void onNodeRemoved(SceneNode* sender);
 		virtual void onChildAttach(SceneNode* sender, SceneNode* child);
 	private:
-		typedef QuadTree<SceneNode*, SceneNode*,
-				SceneNodeKeyGenPolicy<SceneNode*, SceneNode*> > SMQuadTree;
+		typedef QuadTree<SceneNode*, SceneNode*> SMQuadTree;
 
 		SMQuadTree m_quadTree;
 		SceneNode  m_rootNode;
